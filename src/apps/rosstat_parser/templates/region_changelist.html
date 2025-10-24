@@ -1,0 +1,14 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools %}
+    {{ block.super }}
+    <div class="object-tools">
+        <ul class="object-tools">
+            <li>
+                <a href="{% url 'admin:rosstat_parser_region_download-all-tables' %}" class="addlink">
+                    Скачать все таблицы
+                </a>
+            </li>
+        </ul>
+    </div>
+{% endblock %}
