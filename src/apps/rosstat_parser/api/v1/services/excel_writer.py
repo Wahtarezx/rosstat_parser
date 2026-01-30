@@ -6,13 +6,13 @@ from django.core.files import File
 from apps.rosstat_parser.models import Region
 from apps.rosstat_parser.api.v1.services.table_commands import (get_last_filled_row, write_months_in_row,
                                                                 find_cell_by_value, get_district_and_regions_by_region,
-                                                                get_last_filled_column, get_row_average)
+                                                                get_last_filled_column, get_row_average, has_sheet_for_year)
 
 
 os.makedirs("tables", exist_ok=True)
 
 def create_an_turpotok_table(region):
-    turpotok_table = load_workbook("downloads/Turpotok_08-2025.xlsx")
+    turpotok_table = load_workbook("downloads/Turpotok.xlsx")
     analytical_table = Workbook()
     turpotok = analytical_table.active
     turpotok.title = "Турпоток"
@@ -84,18 +84,17 @@ def create_an_turpotok_table(region):
                     row=first_year_value_coord[0], column=i).value
                                        )[1:]
 
-                second_year_value_coord = find_cell_by_value(turpotok, f"{year + 1}, помесячно")
                 second_year_value = str(turpotok.cell(
-                    row=second_year_value_coord[0], column=i).value
+                    row=
+                    first_year_value_coord[0] + 3, column=i).value
                                         )[1:]
             else:
                 first_year_value = str(turpotok.cell(
                     row=first_year_value_coord[0], column=i).value
                                        )
 
-                second_year_value_coord = find_cell_by_value(turpotok, f"{year + 1}, помесячно")
                 second_year_value = str(turpotok.cell(
-                    row=second_year_value_coord[0], column=i).value
+                    row=first_year_value_coord[0] + 3, column=i).value
                                         )
 
             turpotok.cell(
@@ -144,7 +143,7 @@ def create_an_turpotok_table(region):
 
 
 def create_an_mesto_no_table(region):
-    turpotok_table = load_workbook("downloads/Turpotok_08-2025.xlsx")
+    turpotok_table = load_workbook("downloads/Turpotok.xlsx")
     analytical_table = load_workbook(f"tables/Аналитические таблицы {region}.xlsx")
     sheet_name = "Место НО"
     if sheet_name in analytical_table.sheetnames:
@@ -157,7 +156,7 @@ def create_an_mesto_no_table(region):
     mesto_sheet["A4"] = "Российская Федерация"
 
     district, regions = get_district_and_regions_by_region(
-        path="downloads/Turpotok_08-2025.xlsx",
+        path="downloads/Turpotok.xlsx",
         sheet_name="1.1.2022",
         target_region=region
     )
@@ -226,7 +225,7 @@ def create_an_mesto_no_table(region):
     mesto_sheet[f"A{current_row + 3}"] = "Российская Федерация"
 
     district, regions = get_district_and_regions_by_region(
-        path="downloads/Turpotok_08-2025.xlsx",
+        path="downloads/Turpotok.xlsx",
         sheet_name="1.2.2022",
         target_region=region
     )
@@ -293,8 +292,8 @@ def create_an_mesto_no_table(region):
 
 
 def create_an_ksr_table(region):
-    ksr_year_table = load_workbook("downloads/KSR_god_sub_2024.xlsx")
-    ksr_month_table = load_workbook("downloads/KSR_mes_sub_08-2025.xlsx")
+    ksr_year_table = load_workbook("downloads/KSR_god_sub.xlsx")
+    ksr_month_table = load_workbook("downloads/KSR_mes_sub.xlsx")
     analytical_table = load_workbook(f"tables/Аналитические таблицы {region}.xlsx")
     sheet_name = "КСР"
     if sheet_name in analytical_table.sheetnames:
@@ -434,6 +433,8 @@ def create_an_ksr_table(region):
     write_months_in_row(ksr_sheet, "C31")
 
     for year in range(2022, datetime.now().year + 1):
+        if not has_sheet_for_year(ksr_month_table, year):
+            break
         current_row = get_last_filled_row(ksr_sheet, "B") + 1
 
         if year == 2022:

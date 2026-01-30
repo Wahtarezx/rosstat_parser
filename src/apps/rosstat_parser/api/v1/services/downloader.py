@@ -19,6 +19,35 @@ headers = {
     "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
 }
 
+
+def rename_downloaded_files(downloaded_files):
+    renamed_files = {}
+
+    for target, filepath in downloaded_files.items():
+        filename = os.path.basename(filepath)
+
+        if "KSR_god_sub" in filename:
+            new_name = "KSR_god_sub.xlsx"
+
+        elif "KSR_mes_sub" in filename:
+            new_name = "KSR_mes_sub.xlsx"
+
+        elif "Turpotok" in filename:
+            new_name = "Turpotok.xlsx"
+
+        else:
+            new_name = filename
+
+        new_path = os.path.join(os.path.dirname(filepath), new_name)
+
+        if os.path.exists(filepath):
+            os.rename(filepath, new_path)
+            renamed_files[target] = new_path
+            print(f"Переименован: {filename} → {new_name}")
+
+    return renamed_files
+
+
 def download_rosstat_tables(save_dir="downloads"):
     os.makedirs(save_dir, exist_ok=True)
 
@@ -62,4 +91,6 @@ def download_rosstat_tables(save_dir="downloads"):
 
                 downloaded[target] = filepath
 
-    return downloaded
+    files = rename_downloaded_files(downloaded)
+
+    return files

@@ -164,3 +164,12 @@ def get_row_average(sheet: Worksheet, row: int, start_col: int = 1) -> float:
         return 0.0
 
     return round(sum(values) / len(values), 2)
+
+
+def has_sheet_for_year(workbook, year):
+    year_str = str(year)
+    for sheet_name in workbook.sheetnames:
+        if year_str in sheet_name:
+            return True
+    return False
+
