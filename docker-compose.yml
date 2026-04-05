@@ -42,7 +42,7 @@ services:
       - app-network
 
   db:
-    image: postgres:17
+    image: postgres:${POSTGRES_VERSION:-17}
     container_name: ${PROJECT_SLUG}_db
     volumes:
       - ./dumps:/docker-entrypoint-initdb.d
