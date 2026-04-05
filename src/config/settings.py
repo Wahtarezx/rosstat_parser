@@ -99,11 +99,12 @@ LOGGING = {
         },
     },
     "handlers": {"console": {"level": "INFO", "class": "logging.StreamHandler", "formatter": "standard"}},
+    "root": {"handlers": ["console"], "level": "INFO"},
     "loggers": {
-        "root": {"handlers": ["console"], "level": "INFO"},
-        "celery": {"handlers": ["console"], "level": "INFO"},
-        "gunicorn.error": {"handlers": ["console"], "level": "INFO"},
-        "gunicorn.access": {"handlers": ["console"], "level": "INFO"},
+        "celery": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "gunicorn.error": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "gunicorn.access": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "apps": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
 }
 
@@ -128,3 +129,9 @@ REDIS_PORT = os.environ.get("REDIS_PORT", 6379)
 
 CELERY_BROKER_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
 CELERY_RESULT_BACKEND = f'redis://{REDIS_HOST}:{REDIS_PORT}/1'
+
+# Чтобы Celery-клиент не «залипал» в сломанном состоянии,
+# если Redis был недоступен на момент старта процесса.
+CELERY_RESULT_BACKEND_ALWAYS_RETRY = True
+CELERY_RESULT_BACKEND_MAX_RETRIES = 10
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True

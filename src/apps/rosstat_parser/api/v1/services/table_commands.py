@@ -32,11 +32,26 @@ def write_months_in_row(ws, start_cell="A1"):
         ws.cell(row=row, column=col + i, value=month)
 
 
-def find_cell_by_value(sheet, value):
+_FOOTNOTE_RE = re.compile(r"\s*\d+\s*$")
 
+
+def _normalize_region_name(value):
+    """Приводит строку к нормальному виду для сравнения:
+    убирает хвостовые цифры-сноски Росстата (например, "Краснодарский край 2"),
+    неразрывные пробелы и повторные пробелы.
+    """
+    if not isinstance(value, str):
+        return value
+    normalized = value.replace("\xa0", " ").strip()
+    normalized = _FOOTNOTE_RE.sub("", normalized)
+    return " ".join(normalized.split())
+
+
+def find_cell_by_value(sheet, value):
+    target = _normalize_region_name(value)
     for row in sheet.iter_rows():
         for cell in row:
-            if cell.value == value:
+            if _normalize_region_name(cell.value) == target:
                 return [cell.row, cell.column]
     return None
 

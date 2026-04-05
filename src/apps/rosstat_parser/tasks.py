@@ -1,8 +1,19 @@
+import sys
+import traceback
+from datetime import datetime
+
 from celery import shared_task
 from django.core.files import File
 from apps.rosstat_parser.models import Region
 from apps.rosstat_parser.api.v1.services.excel_writer import create_all_tables
 from apps.rosstat_parser.api.v1.services.downloader import download_rosstat_tables
+
+
+def log_progress(message: str) -> None:
+    """Пишет прогресс напрямую в stderr контейнера, минуя все перехваты."""
+    stream = sys.__stderr__
+    stream.write(f"[{datetime.now():%H:%M:%S}] {message}\n")
+    stream.flush()
 
 
 REGIONS = [
@@ -96,22 +107,54 @@ REGIONS = [
 
 @shared_task
 def create_region_table():
+    log_progress(f"=== Старт задачи create_region_table, регионов: {len(REGIONS)} ===")
     Region.objects.all().delete()
+    log_progress("Скачиваю файлы Росстата...")
     download_rosstat_tables(save_dir="downloads")
+    log_progress("Файлы скачаны, начинаю формировать таблицы.")
 
-    for region in REGIONS:
-        print(region)
-        create_all_tables(region)
+    failed_regions = []
+    succeeded_regions = 0
 
-        file_path = f"tables/Аналитические таблицы {region}.xlsx"
-        region_obj = Region.objects.create(name=region)
+    for idx, region in enumerate(REGIONS, start=1):
+        log_progress(f"[{idx}/{len(REGIONS)}] Обработка региона: {region}")
+        try:
+            create_all_tables(region)
 
-        with open(file_path, "rb") as f:
-            region_obj.analytical_table.save(
-                f"Аналитические таблицы {region}.xlsx",
-                File(f)
+            file_path = f"tables/Аналитические таблицы {region}.xlsx"
+            region_obj = Region.objects.create(name=region)
+
+            with open(file_path, "rb") as f:
+                region_obj.analytical_table.save(
+                    f"Аналитические таблицы {region}.xlsx",
+                    File(f)
+                )
+                region_obj.save()
+        except Exception as exc:
+            failed_regions.append((region, repr(exc)))
+            log_progress(
+                f"[{idx}/{len(REGIONS)}] ОШИБКА на регионе {region}: {exc!r} "
+                f"(пропускаем и идём дальше)"
             )
+            traceback.print_exc(file=sys.__stderr__)
+            sys.__stderr__.flush()
+            continue
 
-            region_obj.save()
+        succeeded_regions += 1
+        log_progress(f"[{idx}/{len(REGIONS)}] Регион сохранён: {region}")
 
-    return True
+    log_progress(
+        f"=== Задача create_region_table завершена. "
+        f"Успешно: {succeeded_regions}/{len(REGIONS)}, "
+        f"с ошибками: {len(failed_regions)} ==="
+    )
+    if failed_regions:
+        log_progress("Регионы с ошибками:")
+        for region, err in failed_regions:
+            log_progress(f"  - {region}: {err}")
+
+    return {
+        "total": len(REGIONS),
+        "succeeded": succeeded_regions,
+        "failed": [r for r, _ in failed_regions],
+    }

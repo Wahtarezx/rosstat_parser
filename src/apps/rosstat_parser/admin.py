@@ -29,11 +29,32 @@ class RegionAdmin(admin.ModelAdmin):
 
     def download_all_tables(self, request):
         buffer = BytesIO()
+        missing = []
         with zipfile.ZipFile(buffer, "w") as zf:
             for region in Region.objects.all():
-                if region.analytical_table:
+                if not region.analytical_table:
+                    continue
+                try:
                     file_path = region.analytical_table.path
-                    zf.write(file_path, os.path.basename(file_path))
+                except (ValueError, NotImplementedError):
+                    missing.append(region.name)
+                    continue
+                if not os.path.exists(file_path):
+                    missing.append(region.name)
+                    continue
+                filename = f"{region.name}_{os.path.basename(file_path)}"
+                zf.write(file_path, filename)
+
+        if buffer.tell() == 0:
+            messages.error(request, "Нет доступных таблиц для скачивания")
+            return redirect("..")
+
+        if missing:
+            messages.warning(
+                request,
+                "Файлы отсутствуют на диске для регионов: " + ", ".join(missing),
+            )
+
         buffer.seek(0)
         response = HttpResponse(buffer, content_type="application/zip")
         response["Content-Disposition"] = "attachment; filename=all_region_tables.zip"

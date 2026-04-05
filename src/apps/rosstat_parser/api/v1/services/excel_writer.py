@@ -463,7 +463,27 @@ def create_an_ksr_table(region):
 
         for i in range(3, 15):
             row = get_last_filled_row(ksr_sheet, get_column_letter(i)) + 1
-            region_row = find_cell_by_value(ksr_month_table[f"1.{year}"], region)[0]
+            sheet_name = f"1.{year}"
+            found_cell = find_cell_by_value(ksr_month_table[sheet_name], region)
+            if found_cell is None:
+                import sys
+                available_sheets = ksr_month_table.sheetnames
+                first_col_values = [
+                    ksr_month_table[sheet_name].cell(row=r, column=1).value
+                    for r in range(1, ksr_month_table[sheet_name].max_row + 1)
+                ]
+                sys.__stderr__.write(
+                    f"[excel_writer] KSR: регион не найден. "
+                    f"region={region!r}, year={year}, sheet={sheet_name!r}, column={i}\n"
+                    f"    available_sheets={available_sheets}\n"
+                    f"    first_col_values={first_col_values}\n"
+                )
+                sys.__stderr__.flush()
+                raise ValueError(
+                    f"Регион {region!r} не найден на листе {sheet_name!r} "
+                    f"файла KSR_mes_sub.xlsx (year={year}, column={i})"
+                )
+            region_row = found_cell[0]
             ksr_sheet.cell(row=row, column=i, value=ksr_month_table[f"1.{year}"].cell(row=region_row, column=i - 1).value)
             if i == 3:
                 ksr_sheet.cell(
